@@ -1,12 +1,13 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { createAction, Store } from '@ngrx/store';
+import { Store } from '@ngrx/store';
 
-import { Subscription } from 'rxjs';
+import { Observable } from 'rxjs';
 
 import { Product } from '../product';
-import { ProductService } from '../product.service';
 import {
   getCurrentProduct,
+  getError,
+  getProducts,
   getShowProductCode,
   State,
 } from '../state/product.reducer';
@@ -19,35 +20,27 @@ import * as ProductActions from '../state/product.actions';
 })
 export class ProductListComponent implements OnInit, OnDestroy {
   pageTitle = 'Products';
-  errorMessage: string;
+  errorMessage$: Observable<string>;
 
-  displayCode: boolean;
+  displayCode$: Observable<boolean>;
 
-  products: Product[];
+  products$: Observable<Product[]>;
 
   // Used to highlight the selected product in the list
-  selectedProduct: Product | null;
+  selectedProduct$: Observable<Product | null>;
 
-  constructor(
-    private productService: ProductService,
-    private store: Store<State>
-  ) {}
+  constructor(private store: Store<State>) {}
 
   ngOnInit(): void {
-    this.productService.getProducts().subscribe({
-      next: (products: Product[]) => (this.products = products),
-      error: (err) => (this.errorMessage = err),
-    });
+    this.store.dispatch(ProductActions.loadProducts());
 
-    // TODO: Unsubscribe
-    this.store.select(getShowProductCode).subscribe((showProductCode) => {
-      this.displayCode = showProductCode;
-    });
+    this.errorMessage$ = this.store.select(getError);
 
-    // TODO: Unsubscribe
-    this.store.select(getCurrentProduct).subscribe((currentProduct) => {
-      this.selectedProduct = currentProduct;
-    });
+    this.products$ = this.store.select(getProducts);
+
+    this.displayCode$ = this.store.select(getShowProductCode);
+
+    this.selectedProduct$ = this.store.select(getCurrentProduct);
   }
 
   ngOnDestroy(): void {}
@@ -61,6 +54,8 @@ export class ProductListComponent implements OnInit, OnDestroy {
   }
 
   productSelected(product: Product): void {
-    this.store.dispatch(ProductActions.setCurrentProduct({ product }));
+    this.store.dispatch(
+      ProductActions.setCurrentProduct({ currentProductId: product.id })
+    );
   }
 }
